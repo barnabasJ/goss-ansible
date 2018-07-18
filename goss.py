@@ -57,12 +57,10 @@ examples:
 
 
 # launch goss validate command on the file
-def check(module, test_file_path, output_format, goss_path):
-    cmd = ""
-    if output_format is not None:
-        cmd = "{0} -g {1} v --format {2}".format(goss_path, test_file_path, output_format)
-    else:
-        cmd = "{0} -g {1} v".format(goss_path, test_file_path)
+def check(module, test_file_path, vars_file, output_format, goss_path):
+    cmd = "%s -g %s v" % (goss_path, test_file_path)
+    cmd = cmd + " --format %s" % output_format if output_format is not None else cmd
+    cmd = cmd + " --vars %s" % vars_file if vars_file is not None else cmd
     return module.run_command(cmd)
 
 
@@ -77,6 +75,7 @@ def main():
     module = AnsibleModule(
         argument_spec=dict(
             path=dict(required=True, type='str'),
+            vars=dict(required=False, type='str'),
             format=dict(required=False, type='str'),
             output_file=dict(required=False, type='str'),
             goss_path=dict(required=False, default='goss', type='str'),
@@ -85,6 +84,7 @@ def main():
     )
 
     test_file_path = module.params['path']  # test file path
+    vars_file_path = module.params['vars']  # test vars path
     output_format = module.params['format']  # goss output format
     output_file_path = module.params['output_file']
     goss_path = module.params['goss_path']
@@ -102,6 +102,16 @@ def main():
     # test if test file is not a dir
     if os.path.isdir(test_file_path):
         module.fail_json(msg="Test file must be a file ! : %s" % (test_file_path))
+
+    if vars_file is not None:
+        # test if access to vars file is ok
+
+        if not os.access(test_file_path, os.R_OK):
+            module.fail_json(msg="Vars file %s not readable" % (test_file_path))
+
+        # test if vars file is not a dir
+        if os.path.isdir(test_file_path):
+            module.fail_json(msg="Vars file must be a file ! : %s" % (test_file_path))
 
     (rc, out, err) = check(module, test_file_path, output_format, goss_path)
 
